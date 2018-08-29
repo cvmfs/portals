@@ -6,7 +6,8 @@ Portals are a way to ingest content into a CVMFS server.
 
 ### S3 based
 
-We are basing the portal implementation on the S3 interface, this because S3 is easily available to anybody.
+We are basing the portal implementation on the S3 interface, this because S3 is 
+easily available to anybody.
 
 In particular we will consider in the portal design the implementation of S3 of:
 
@@ -22,7 +23,7 @@ repository, and an extra bucket with the name `$REPONAME.portal`
 If any of those repository is missing, the portal deamon will not consider any
 bucket.
 
-As an example, if the portals is managing the repository `foo.cern.ch` and
+As an example, if the portal is managing the repository `foo.cern.ch` and
 `bar.fermilab.com` it will expect 4 buckets:
 
 1. foo.cern.ch
@@ -130,8 +131,8 @@ huge issue.
 Another solution is too keep listing the files in the bucket untill we are sure
 that, at least in our region, the files is been removed from the index.
 
-Another solution is to use lockfiles, uploading a `$name.tar.hash().STATUS` where status
-would be one of the following:
+Another solution is to use lockfiles, uploading a `$name.tar.hash().STATUS` 
+where status would be one of the following:
 
 1. Downloading
 2. Ingesting
@@ -151,7 +152,3 @@ hours?).
 
 I am quite keen to go for the last option, that is a little more complex but
 allow a lot more monitoring in the system, that will be quite essential.
-
-
-
-
