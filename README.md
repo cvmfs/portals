@@ -95,9 +95,28 @@ portal daemon will spawn:
 1. A ping process
 2. A repo process
 
-It will not try to kill the processes when they are not needed anymore since
+~~It will not try to kill the processes when they are not needed anymore since
 each one of them will commit suicide as soon as it detect that it should not
-exists anymore.
+exists anymore.~~
+
+We may want to stop a particular portal for a while without changing the
+credentials.
+
+Another idea could be to put a file into the status bucket (the `*.portal`
+bucket) with a meaning, in this way the operation of the portals could be
+stopped manually without touching the configuration file.
+
+The files could be like:
+
+1. RUN
+2. STOP
+
+Or maybe, even better, a single file with the action inside. No, a single file
+will suffer from eventual consistency issues when we overwrite its content.
+
+Maybe is better to use multiple files and exploit the "last modified" meta-data
+key, still possible to face problems with the eventual consistency deal but
+very unlikely.
 
 #### Pinging process
 
@@ -153,5 +172,18 @@ I am quite keen to go for the last option, that is a little more complex but
 allow a lot more monitoring in the system, that will be quite essential.
 
 
+## Details for every process
 
+### Backend process
+
+This process is responsible to keep loading the configuration file and see if
+is necessary to spawn other process.
+
+It will keep reloading the configuration file every 30 seconds or when it
+receives the SIGHUP signal.
+
+For every backend the process will try to connect to it using the S3 API.
+If it fails it print an error message.
+
+...
 
