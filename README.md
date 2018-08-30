@@ -6,9 +6,11 @@ Portals are a way to ingest content into a CVMFS server.
 
 ### S3 based
 
-We are basing the portal implementation on the S3 interface, this because S3 is easily available to anybody.
+We are basing the portal implementation on the S3 interface, this because S3 is
+easily available to anybody.
 
-In particular we will consider in the portal design the implementation of S3 of:
+In particular we will consider in the portal design the implementation of S3
+of:
 
 1. AWS
 2. minio
@@ -41,18 +43,10 @@ credential along with the domain, we expect an array of table, under the key
 
 Example:
 
-```
-# foo.cern.ch <- this line is a comment
-[[backend]]
-S3_ACCESS_KEY="..."
-S3_SECRET_KEY="..."
-S3_DOMAIN="..."
+``` # foo.cern.ch <- this line is a comment [[backend]] S3_ACCESS_KEY="..."
+S3_SECRET_KEY="..." S3_DOMAIN="..."
 
-[[backend]]
-S3_ACCESS_KEY="..."
-S3_SECRET_KEY="..."
-S3_DOMAIN="..."
-```
+[[backend]] S3_ACCESS_KEY="..." S3_SECRET_KEY="..." S3_DOMAIN="..." ```
 
 For each backend the daemon will try to connect and will list all the bucket
 available.
@@ -149,8 +143,8 @@ huge issue.
 Another solution is too keep listing the files in the bucket untill we are sure
 that, at least in our region, the files is been removed from the index.
 
-Another solution is to use lockfiles, uploading a `$name.tar.hash().STATUS` where status
-would be one of the following:
+Another solution is to use lockfiles, uploading a `$name.tar.hash().STATUS`
+where status would be one of the following:
 
 1. Downloading
 2. Ingesting
@@ -189,8 +183,8 @@ repository are available.
 [For each line we split at the first space ' ' and select the first chunk that
 should be the name of the repository.]
 
-For every backend the process will try to connect to it using the S3 API.
-If it fails it print an error message.
+For every backend the process will try to connect to it using the S3 API.  If
+it fails it print an error message.
 
 Once we are connected to a backend we procede to list all the bucket in that
 backend.
@@ -266,8 +260,9 @@ download the file writing it into the temporary file just created.
 
 We re-try the download 3 times (configurable) in case of error. 
 
-If still we are unable to download the file we write the `.FAILURE` file 
-logging the error, we delete the `.DOWNLOADING` file and we move on the next file.
+If still we are unable to download the file we write the `.FAILURE` file
+logging the error, we delete the `.DOWNLOADING` file and we move on the next
+file.
 
 For each failure we log it into STDERR.
 
@@ -277,9 +272,8 @@ Once the file is in the local storange we can proced to ingest it into CVMFS.
 
 We start by uploading the `.INGESTING` file into the status bucket.
 
-Again we try to ingest the file a configurable number of time.
-(Can I understand what error the `cvmfs_server` return without parsing the
-output?)
+Again we try to ingest the file a configurable number of time.  (Can I
+understand what error the `cvmfs_server` return without parsing the output?)
 
 If we were unsucessfull in ingesting the file we upload the `.FAILURE` file
 into the status bucket,then we delete the `.INGESTING` file and finally we
@@ -298,8 +292,8 @@ Then we issue the delete command.
 #### Final state
 
 If everything went correctly we should have the file ingested into CVMFS, the
-`.DOWNLOADING`, `.INGESTING`, `.DELETED` and `.SUCESS` files into the status bucket and
-not anymore the original file into the bucket.
+`.DOWNLOADING`, `.INGESTING`, `.DELETED` and `.SUCESS` files into the status
+bucket and not anymore the original file into the bucket.
 
 If there was any error we should have the `.FAILURE` status files with the
 error logged in, along with the status file of the last attempt operation.
