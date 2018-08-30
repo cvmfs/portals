@@ -6,11 +6,7 @@ Portals are a way to ingest content into a CVMFS server.
 
 ### S3 based
 
-<<<<<<< HEAD
 We are basing the portal implementation on the S3 interface, this because S3 is
-=======
-We are basing the portal implementation on the S3 interface, this because S3 is 
->>>>>>> 0cce1d9b67d60c94a017914979d9f576db6ccbe8
 easily available to anybody.
 
 In particular we will consider in the portal design the implementation of S3
