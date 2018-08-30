@@ -43,10 +43,18 @@ credential along with the domain, we expect an array of table, under the key
 
 Example:
 
-``` # foo.cern.ch <- this line is a comment [[backend]] S3_ACCESS_KEY="..."
-S3_SECRET_KEY="..." S3_DOMAIN="..."
+``` 
+# foo.cern.ch <- this line is a comment 
+[[backend]] 
+S3_ACCESS_KEY="..."
+S3_SECRET_KEY="..." 
+S3_DOMAIN="..."
 
-[[backend]] S3_ACCESS_KEY="..." S3_SECRET_KEY="..." S3_DOMAIN="..." ```
+[[backend]] 
+S3_ACCESS_KEY="..." 
+S3_SECRET_KEY="..." 
+S3_DOMAIN="..." 
+```
 
 For each backend the daemon will try to connect and will list all the bucket
 available.
