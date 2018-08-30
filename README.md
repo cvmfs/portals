@@ -165,7 +165,6 @@ hours?).
 
 I am quite keen to go for the last option, that is a little more complex but
 allow a lot more monitoring in the system, that will be quite essential.
-<<<<<<< HEAD
 
 
 ## Details for every process
