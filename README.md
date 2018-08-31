@@ -325,4 +325,28 @@ A reasonable default would be to left untouched all the files relative to a
 failed attempt (no matter how old) and delete all the file returned by a
 sucessfull attempt after 24 hours.
 
+### Design Trade-off to consider
+
+We are not optimizing the number of calls to the S3 backend, those calls are
+not economically free, however they are extremely cheap and we pay only on the
+AWS backend, on minio and CEPH we don't really have these concerns.
+
+We are keeping polling the S3 backend. This is an issue since we need to
+somehow decide how often poll it, and every time interval we pick will be wrong
+for some use case. This is mitigated letting the operator decide the poll
+timeout.
+The other option is to exploit, the callback capabilities of S3. However those
+callbacks are not really implemented in the CEPH implementation and there are
+several inconsistency on how they are implemented in AWS vs. minio.
+
+Using the callbacks will eliminate both the concerns about the number of calls
+against the backend and the polling timeout, however it will make everything a
+more complex, both operationally (the S3 backend need to be set in such a way
+that calls the portal daemon) and from the coding point of view, more cases to
+manage.
+
+It can be added in the configuration if we decide it is something nice to have
+and worth to work with. But at the moment I wouldn't bother too much with it.
+
+
 EOF
