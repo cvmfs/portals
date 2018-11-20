@@ -32,5 +32,10 @@ func ParseConfig(path string) (config Config, err error) {
 	if err != nil {
 		return
 	}
+	for _, bucketConfig := range config.Credentials {
+		if bucketConfig.StatusBucket == "" {
+			bucketConfig.StatusBucket = bucketConfig.Bucket + ".status"
+		}
+	}
 	return
 }
