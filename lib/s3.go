@@ -25,7 +25,7 @@ func NewS3CredentialProvider(accessKey, secretKey string) (S3CredentialsProvider
 	return S3CredentialsProvider{accessKey: accessKey, secretKey: secretKey}, nil
 }
 
-func (s S3CredentialsProvider) Retrive() (credentials.Value, error) {
+func (s S3CredentialsProvider) Retrieve() (credentials.Value, error) {
 	return credentials.Value{
 		AccessKeyID:     s.accessKey,
 		SecretAccessKey: s.secretKey,
