@@ -12,6 +12,8 @@ type BucketConfiguration struct {
 	SecretKey    string `toml:"secret-key"`
 	Bucket       string `toml:"bucket"`
 	StatusBucket string `toml:"status-bucket"`
+	HostURL      string `toml:"host-url"`
+	Region       string `region:"region"`
 }
 
 type Config struct {
@@ -32,9 +34,12 @@ func ParseConfig(path string) (config Config, err error) {
 	if err != nil {
 		return
 	}
-	for _, bucketConfig := range config.Credentials {
+	for i, bucketConfig := range config.Credentials {
 		if bucketConfig.StatusBucket == "" {
-			bucketConfig.StatusBucket = bucketConfig.Bucket + ".status"
+			config.Credentials[i].StatusBucket = bucketConfig.Bucket + ".status"
+		}
+		if bucketConfig.Region == "" {
+			config.Credentials[i].Region = "us-east-1"
 		}
 	}
 	return
