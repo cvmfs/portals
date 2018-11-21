@@ -22,7 +22,7 @@ var parseConfigCmd = &cobra.Command{
 
 		config, err := lib.ParseConfig(arg[0])
 		if err != nil {
-			log.LogE(err).Error("Error in parsing the configuration file")
+			log.LogE(err).Fatal("Error in parsing the configuration file")
 		}
 
 		fmt.Printf("%#v\n", config)
