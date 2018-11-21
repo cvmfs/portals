@@ -15,13 +15,22 @@
     "aws/awsutil",
     "aws/client",
     "aws/client/metadata",
+    "aws/corehandlers",
     "aws/credentials",
+    "aws/credentials/ec2rolecreds",
+    "aws/credentials/endpointcreds",
+    "aws/credentials/stscreds",
+    "aws/csm",
+    "aws/defaults",
+    "aws/ec2metadata",
     "aws/endpoints",
     "aws/request",
+    "aws/session",
     "aws/signer/v4",
     "internal/s3err",
     "internal/sdkio",
     "internal/sdkrand",
+    "internal/sdkuri",
     "internal/shareddefaults",
     "private/protocol",
     "private/protocol/eventstream",
@@ -33,7 +42,8 @@
     "private/protocol/xml/xmlutil",
     "service/s3",
     "service/s3/s3iface",
-    "service/s3/s3manager"
+    "service/s3/s3manager",
+    "service/sts"
   ]
   revision = "66832f7f150914a46ffbfc03210f3b9cb0e4c005"
   version = "v1.15.57"
@@ -103,6 +113,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8c925b1a2a2fad4b7bfee4820de85c1a7d721700857693ce9a6569d353fb7d30"
+  inputs-digest = "9bca5c3b7d7ca3bdeb43b6b8bfb08fc5242a3290afd0fa9431d7beea41cedb5c"
   solver-name = "gps-cdcl"
   solver-version = 1
