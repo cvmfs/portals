@@ -13,18 +13,18 @@ the other call or do the "right thing", re-try? Set a re-try in S3? Whatever!
 */
 
 type PipelineInput interface {
-	MakeS3RemoteFile() S3RemoteFile
+	MakeS3RemoteFile() IS3RemoteFile
 }
 
-type S3RemoteFile interface {
-	DownloadFile() S3LocalFile
+type IS3RemoteFile interface {
+	DownloadFile() IS3LocalFile
 }
 
-type S3LocalFile interface {
-	Ingest() S3IngestedFile
+type IS3LocalFile interface {
+	Ingest() IS3IngestedFile
 }
 
-type S3IngestedFile interface {
+type IS3IngestedFile interface {
 	Cleanup() PipelineOutput
 }
 
@@ -40,9 +40,9 @@ func NewPipeline() (chan<- PipelineInput, <-chan PipelineOutput) {
 	chanOutput := make(chan PipelineOutput, buffer)
 
 	go func() {
-		downloadChan := make(chan S3RemoteFile, buffer)
-		ingestChan := make(chan S3LocalFile, buffer)
-		cleanupChan := make(chan S3IngestedFile, buffer)
+		downloadChan := make(chan IS3RemoteFile, buffer)
+		ingestChan := make(chan IS3LocalFile, buffer)
+		cleanupChan := make(chan IS3IngestedFile, buffer)
 
 		for w := 1; w <= workers; w++ {
 			go func() {
