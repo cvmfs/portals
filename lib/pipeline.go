@@ -78,3 +78,17 @@ func NewPipeline() (chan<- PipelineInput, <-chan PipelineOutput) {
 
 	return chanInput, chanOutput
 }
+
+type GenericError struct{}
+
+func (e GenericError) DownloadFile() S3LocalFile {
+	return GenericError{}
+}
+
+func (e GenericError) Ingest() S3IngestedFile {
+	return GenericError{}
+}
+
+func (e GenericError) Cleanup() PipelineOutput {
+	return PipelineOutput{}
+}
