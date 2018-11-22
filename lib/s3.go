@@ -1,11 +1,13 @@
 package lib
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
-	//"github.com/siscia/portals/log"
+	"github.com/siscia/portals/log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -95,6 +97,42 @@ func NewS3BucketCouple(bc BucketConfiguration) (couple S3BucketCouple, err error
 	couple.Data = data
 	couple.Status = status
 	return
+}
+
+func UploadPingToStatusBucket(s3c S3BucketCouple) {
+	status := s3c.Status
+	uploader := s3manager.NewUploader(&status.Session)
+	l := log.Decorate(map[string]string{
+		"Action":        "PING",
+		"Status Bucket": status.BucketName,
+	})
+	for {
+		err := func() error {
+			t := time.Now()
+			timestamp := fmt.Sprint(t)
+
+			body := bytes.NewBuffer(make([]byte, 0))
+			body.WriteString(timestamp)
+
+			_, err := uploader.Upload(&s3manager.UploadInput{
+				Bucket:      aws.String(status.BucketName),
+				Key:         aws.String("PING"),
+				ContentType: aws.String("text"),
+				Body:        body,
+			})
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}()
+		if err != nil {
+			l(log.LogE(err)).Error("Error in PINGing the status bucket")
+		} else {
+			l(log.Log()).Info("Successfully PINGing the status bucket")
+		}
+		time.Sleep(30 * time.Second)
+	}
 }
 
 type S3File struct {
