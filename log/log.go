@@ -15,7 +15,7 @@ func LogE(err error) *log.Entry {
 func Decorate(fields map[string]string) func(*log.Entry) *log.Entry {
 	return func(l *log.Entry) *log.Entry {
 		for key, value := range fields {
-			l.WithField(key, value)
+			l = l.WithField(key, value)
 		}
 		return l
 	}
