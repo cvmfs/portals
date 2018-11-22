@@ -25,7 +25,7 @@ type S3LocalFile interface {
 }
 
 type S3IngestedFile interface {
-	CleanUp() PipelineOutput
+	Cleanup() PipelineOutput
 }
 
 type PipelineOutput struct{}
@@ -63,13 +63,13 @@ func NewPipeline() (chan<- PipelineInput, <-chan PipelineOutput) {
 			go func() {
 				for s3LocalFile := range ingestChan {
 					ingestedFileToCleanup := s3LocalFile.Ingest()
-					cleaupChan <- ingestedFileToCleanup
+					cleanupChan <- ingestedFileToCleanup
 				}
 			}()
 
 			go func() {
 				for s3IngestedFile := range cleanupChan {
-					cleanedupFileToReturn := s3IngestedFile.Cleaup()
+					cleanedupFileToReturn := s3IngestedFile.Cleanup()
 					chanOutput <- cleanedupFileToReturn
 				}
 			}()
