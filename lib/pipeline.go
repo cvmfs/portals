@@ -3,9 +3,15 @@ package lib
 import (
 	"crypto/sha256"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+
+	"github.com/siscia/portals/cvmfs"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 /*
@@ -88,6 +94,10 @@ func NewPipeline() (chan<- PipelineInput, <-chan PipelineOutput) {
 	return chanInput, chanOutput
 }
 
+// The part above is the very important part that is necessary to understand
+// before to dive into the real code, what is below is more details
+// implementation
+
 type GenericError struct{}
 
 func (e GenericError) DownloadFile() IS3LocalFile {
@@ -103,21 +113,65 @@ func (e GenericError) Cleanup() PipelineOutput {
 }
 
 type S3Object struct {
-	Key     string
-	Hash    string
-	Session *session.Session
+	bucket    string
+	key       string
+	hash      string
+	session   *session.Session
+	cvmfsRepo *cvmfs.Repo
 }
 
-func NewS3Object(s3obj s3.Object, session *session.Session) S3Object {
+func NewS3Object(bucket string, s3obj s3.Object, session *session.Session, cvmfsRepo *cvmfs.Repo) S3Object {
 	toHash := []byte(fmt.Sprintf("%s%d", *s3obj.Key, s3obj.LastModified.Unix()))
 	hash := fmt.Sprintf("%s", sha256.Sum256(toHash))
-	return S3Object{Key: *s3obj.Key, Hash: hash, Session: session}
+	return S3Object{bucket: bucket, key: *s3obj.Key, hash: hash, session: session, cvmfsRepo: cvmfsRepo}
 }
 
 func (s3obj S3Object) MakeS3RemoteFile() IS3RemoteFile {
 	return s3obj
 }
 
+type S3LocalFile struct {
+	bucket    string
+	key       string
+	hash      string
+	tempPath  string
+	cvmfsRepo *cvmfs.Repo
+}
+
 func (s3obj S3Object) DownloadFile() IS3LocalFile {
-	return s3obj
+
+	f, _ := ioutil.TempFile("", "s3temp")
+
+	defer f.Close()
+
+	downloader := s3manager.NewDownloader(s3obj.session)
+	downloader.Download(f, &s3.GetObjectInput{
+		Bucket: &s3obj.bucket,
+		Key:    &s3obj.key,
+	})
+
+	return S3LocalFile{key: s3obj.key, bucket: s3obj.bucket,
+		tempPath: f.Name(), cvmfsRepo: s3obj.cvmfsRepo}
+}
+
+type S3IngestedFile struct{}
+
+func (s3local S3LocalFile) Ingest() IS3IngestedFile {
+	keyPaths := strings.Split(s3local.key, "/")
+	cvmfsPath := filepath.Join(keyPaths[:len(keyPaths)-1]...)
+	repo := s3local.cvmfsRepo.Name
+
+	s3local.cvmfsRepo.Lock.Lock()
+	defer s3local.cvmfsRepo.Lock.Unlock()
+
+	cvmfs.ExecCommand("cvmfs_server", "ingest",
+		"-t", s3local.tempPath,
+		"-b", cvmfsPath,
+		repo).Start()
+
+	return S3IngestedFile{}
+}
+
+func (s3ingested S3IngestedFile) Cleanup() PipelineOutput {
+	return PipelineOutput{}
 }

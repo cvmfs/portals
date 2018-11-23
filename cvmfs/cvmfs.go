@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/siscia/portals/log"
 
@@ -217,4 +218,9 @@ func IngestTar(CVMFSRepo string, tar IngestableTar) IngestionResult {
 		CVMFSRepo).Start()
 	result.err = err
 	return result
+}
+
+type Repo struct {
+	Name string
+	Lock sync.Mutex
 }
