@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/siscia/portals/cmd"
-	_ "github.com/siscia/portals/cvmfs"
-	_ "github.com/siscia/portals/lib"
+	"github.com/cvmfs/portals/cmd"
+	_ "github.com/cvmfs/portals/cvmfs"
+	_ "github.com/cvmfs/portals/lib"
 )
 
 func main() {

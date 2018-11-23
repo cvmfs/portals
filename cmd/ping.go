@@ -3,8 +3,8 @@ package cmd
 import (
 	"sync"
 
-	"github.com/siscia/portals/lib"
-	"github.com/siscia/portals/log"
+	"github.com/cvmfs/portals/lib"
+	"github.com/cvmfs/portals/log"
 
 	"github.com/spf13/cobra"
 )

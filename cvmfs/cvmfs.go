@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/siscia/portals/log"
+	"github.com/cvmfs/portals/log"
 
 	copy "github.com/otiai10/copy"
 	logrus "github.com/sirupsen/logrus"

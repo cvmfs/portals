@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/siscia/portals/log"
+	"github.com/cvmfs/portals/log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
