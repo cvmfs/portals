@@ -8,6 +8,7 @@ import (
 )
 
 type BucketConfiguration struct {
+	CVMFSRepo    string `toml:"cvmfs-repo"`
 	AccessKey    string `toml:"access-key"`
 	SecretKey    string `toml:"secret-key"`
 	Bucket       string `toml:"bucket"`
