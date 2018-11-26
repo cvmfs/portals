@@ -224,3 +224,8 @@ type Repo struct {
 	Name string
 	Lock sync.Mutex
 }
+
+func NewRepo(name string) Repo {
+	m := &sync.Mutex{}
+	return Repo{name, *m}
+}
