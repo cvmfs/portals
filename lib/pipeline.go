@@ -1,14 +1,18 @@
 package lib
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cvmfs/portals/cvmfs"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
@@ -113,17 +117,44 @@ func (e GenericError) Cleanup() PipelineOutput {
 }
 
 type S3Object struct {
-	bucket    string
-	key       string
-	hash      string
-	session   *session.Session
-	cvmfsRepo *cvmfs.Repo
+	bucket       string
+	statusBucket string
+	key          string
+	hash         string
+	session      *session.Session
+	cvmfsRepo    *cvmfs.Repo
 }
 
-func NewS3Object(bucket string, s3obj s3.Object, session *session.Session, cvmfsRepo *cvmfs.Repo) S3Object {
+func (s3o S3Object) UploadStatus(status string) error {
+	t := time.Now()
+	timestamp := fmt.Sprint(t)
+	body := bytes.NewBuffer(make([]byte, 0))
+	body.WriteString(timestamp)
+
+	key := fmt.Sprintf("%s.%s.%s", s3o.key, s3o.hash, status)
+
+	uploader := s3manager.NewUploader(s3o.session)
+	_, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(s3o.statusBucket),
+		Key:    aws.String(key),
+		Body:   body,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func NewS3Object(bucket, statusBucket string, s3obj s3.Object, session *session.Session, cvmfsRepo *cvmfs.Repo) S3Object {
 	toHash := []byte(fmt.Sprintf("%s%d", *s3obj.Key, s3obj.LastModified.Unix()))
-	hash := fmt.Sprintf("%s", sha256.Sum256(toHash))
-	return S3Object{bucket: bucket, key: *s3obj.Key, hash: hash, session: session, cvmfsRepo: cvmfsRepo}
+	hash := fmt.Sprintf("%s", sha256.Sum256(toHash))[0:10]
+	return S3Object{
+		bucket:       bucket,
+		statusBucket: statusBucket,
+		key:          *s3obj.Key,
+		hash:         hash,
+		session:      session,
+		cvmfsRepo:    cvmfsRepo}
 }
 
 func (s3obj S3Object) MakeS3RemoteFile() IS3RemoteFile {
@@ -131,11 +162,8 @@ func (s3obj S3Object) MakeS3RemoteFile() IS3RemoteFile {
 }
 
 type S3LocalFile struct {
-	bucket    string
-	key       string
-	hash      string
-	tempPath  string
-	cvmfsRepo *cvmfs.Repo
+	S3Object
+	tempPath string
 }
 
 func (s3obj S3Object) DownloadFile() IS3LocalFile {
@@ -144,22 +172,28 @@ func (s3obj S3Object) DownloadFile() IS3LocalFile {
 
 	defer f.Close()
 
+	go s3obj.UploadStatus("DOWNLOADING")
+
 	downloader := s3manager.NewDownloader(s3obj.session)
 	downloader.Download(f, &s3.GetObjectInput{
 		Bucket: &s3obj.bucket,
 		Key:    &s3obj.key,
 	})
 
-	return S3LocalFile{key: s3obj.key, bucket: s3obj.bucket,
-		tempPath: f.Name(), cvmfsRepo: s3obj.cvmfsRepo}
+	return S3LocalFile{s3obj, f.Name()}
 }
 
-type S3IngestedFile struct{}
+type S3IngestedFile struct {
+	S3Object
+	tempPath string
+}
 
 func (s3local S3LocalFile) Ingest() IS3IngestedFile {
 	keyPaths := strings.Split(s3local.key, "/")
 	cvmfsPath := filepath.Join(keyPaths[:len(keyPaths)-1]...)
 	repo := s3local.cvmfsRepo.Name
+
+	go s3local.UploadStatus("INGESTING")
 
 	s3local.cvmfsRepo.Lock.Lock()
 	defer s3local.cvmfsRepo.Lock.Unlock()
@@ -169,9 +203,13 @@ func (s3local S3LocalFile) Ingest() IS3IngestedFile {
 		"-b", cvmfsPath,
 		repo).Start()
 
-	return S3IngestedFile{}
+	return S3IngestedFile{s3local.S3Object, s3local.tempPath}
 }
 
 func (s3ingested S3IngestedFile) Cleanup() PipelineOutput {
+	os.Remove(s3ingested.tempPath)
+
+	go s3ingested.UploadStatus("DELETING")
+
 	return PipelineOutput{}
 }
