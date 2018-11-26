@@ -72,6 +72,30 @@ func (b S3Bucket) ListObject() (*s3.ListObjectsOutput, error) {
 	return sess.ListObjects(&s3.ListObjectsInput{Bucket: &b.BucketName})
 }
 
+func (b S3Bucket) SpoolAllObject(input *s3.ListObjectsV2Input, output chan<- s3.Object) {
+	client := s3.New(&b.Session)
+
+	if input == nil {
+		input = &s3.ListObjectsV2Input{Bucket: &b.BucketName}
+	} else {
+		if input.Bucket == nil {
+			input.Bucket = &b.BucketName
+		}
+	}
+
+	go func() {
+		client.ListObjectsV2Pages(input,
+			func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+				for _, object := range page.Contents {
+					output <- *object
+				}
+				return lastPage
+			},
+		)
+		close(output)
+	}()
+}
+
 type S3BucketCouple struct {
 	Data   S3Bucket
 	Status S3Bucket
