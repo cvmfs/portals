@@ -83,15 +83,18 @@ func (b S3Bucket) SpoolAllObject(input *s3.ListObjectsV2Input, output chan<- s3.
 		}
 	}
 
+	fmt.Println(input)
 	go func() {
 		client.ListObjectsV2Pages(input,
 			func(page *s3.ListObjectsV2Output, lastPage bool) bool {
 				for _, object := range page.Contents {
+					log.Log().Trace("Got object")
 					output <- *object
 				}
 				return lastPage
 			},
 		)
+		log.Log().Trace("Closing spool channel")
 		close(output)
 	}()
 }

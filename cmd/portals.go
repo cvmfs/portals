@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/cvmfs/portals/cvmfs"
 	"github.com/cvmfs/portals/lib"
@@ -28,45 +29,52 @@ var portalsCmd = &cobra.Command{
 			return
 		}
 
-		inputChan, outputChan := lib.NewPipeline()
-
+		var wg sync.WaitGroup
 		for _, bucketConfiguration := range config.Credentials {
 
 			couple, err := lib.NewS3BucketCouple(bucketConfiguration)
+			repo := cvmfs.NewRepo(bucketConfiguration.CVMFSRepo)
 			if err != nil {
 				log.LogE(err).Error("Error in generating the Couple of Buckets")
 				continue
 			}
 
+			wg.Add(1)
 			go func() {
-				repo := cvmfs.NewRepo(bucketConfiguration.CVMFSRepo)
+
 				for {
+					inputChan, outputChan := lib.NewPipeline()
+
 					b := couple.Data
 					objectChan := make(chan s3.Object, 10)
 
 					b.SpoolAllObject(nil, objectChan)
 
-					for object := range objectChan {
-						keySplitted := strings.Split(*object.Key, ".")
-						if keySplitted[len(keySplitted)-1] == "tar" {
-							s3o := lib.NewS3Object(
-								couple.Data.BucketName,
-								couple.Status.BucketName,
-								object,
-								&couple.Status.Session,
-								&repo)
-							inputChan <- s3o
+					go func() {
+						for object := range objectChan {
+							fmt.Println(*object.Key)
+							keySplitted := strings.Split(*object.Key, ".")
+							if keySplitted[len(keySplitted)-1] == "tar" {
+								s3o := lib.NewS3Object(
+									couple.Data.BucketName,
+									couple.Status.BucketName,
+									object,
+									&couple.Status.Session,
+									&repo)
+								inputChan <- s3o
+							}
 						}
-					}
+						close(inputChan)
+					}()
 
+					for output := range outputChan {
+						fmt.Println(output)
+					}
 				}
 			}()
 
 		}
+		wg.Wait()
 
-		for output := range outputChan {
-
-			fmt.Println(output)
-		}
 	},
 }

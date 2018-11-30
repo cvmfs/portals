@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cvmfs/portals/cvmfs"
@@ -60,11 +61,21 @@ func NewPipeline() (chan<- PipelineInput, <-chan PipelineOutput) {
 
 	go func() {
 		downloadChan := make(chan IS3RemoteFile, buffer)
+		var downloadChanWG sync.WaitGroup
+
 		ingestChan := make(chan IS3LocalFile, buffer)
+		var ingestChanWG sync.WaitGroup
+
 		cleanupChan := make(chan IS3IngestedFile, buffer)
+		var cleanupChanWG sync.WaitGroup
+
+		var chanOutputWG sync.WaitGroup
 
 		for w := 1; w <= workers; w++ {
+			downloadChanWG.Add(1)
 			go func() {
+				defer downloadChanWG.Done()
+
 				for pipelineInput := range chanInput {
 					remoteFileToDownload :=
 						pipelineInput.MakeS3RemoteFile()
@@ -72,27 +83,50 @@ func NewPipeline() (chan<- PipelineInput, <-chan PipelineOutput) {
 				}
 			}()
 
+			ingestChanWG.Add(1)
 			go func() {
+				defer ingestChanWG.Done()
+
 				for s3RemoteFile := range downloadChan {
 					localFileToIngest := s3RemoteFile.DownloadFile()
 					ingestChan <- localFileToIngest
 				}
 			}()
 
+			cleanupChanWG.Add(1)
 			go func() {
+				defer cleanupChanWG.Done()
+
 				for s3LocalFile := range ingestChan {
 					ingestedFileToCleanup := s3LocalFile.Ingest()
 					cleanupChan <- ingestedFileToCleanup
 				}
 			}()
 
+			chanOutputWG.Add(1)
 			go func() {
+				defer chanOutputWG.Done()
+
 				for s3IngestedFile := range cleanupChan {
 					cleanedupFileToReturn := s3IngestedFile.Cleanup()
 					chanOutput <- cleanedupFileToReturn
 				}
 			}()
 		}
+
+		go func() {
+			downloadChanWG.Wait()
+			close(downloadChan)
+
+			ingestChanWG.Wait()
+			close(ingestChan)
+
+			cleanupChanWG.Wait()
+			close(cleanupChan)
+
+			chanOutputWG.Wait()
+			close(chanOutput)
+		}()
 	}()
 
 	return chanInput, chanOutput
@@ -146,6 +180,7 @@ func (s3o S3Object) UploadStatus(status string) error {
 }
 
 func NewS3Object(bucket, statusBucket string, s3obj s3.Object, session *session.Session, cvmfsRepo *cvmfs.Repo) S3Object {
+
 	toHash := []byte(fmt.Sprintf("%s%d", *s3obj.Key, s3obj.LastModified.Unix()))
 	hash := fmt.Sprintf("%s", sha256.Sum256(toHash))[0:10]
 	return S3Object{
@@ -191,6 +226,11 @@ type S3IngestedFile struct {
 func (s3local S3LocalFile) Ingest() IS3IngestedFile {
 	keyPaths := strings.Split(s3local.key, "/")
 	cvmfsPath := filepath.Join(keyPaths[:len(keyPaths)-1]...)
+
+	if cvmfsPath == "" {
+		cvmfsPath = "./"
+	}
+
 	repo := s3local.cvmfsRepo.Name
 
 	go s3local.UploadStatus("INGESTING")
@@ -210,6 +250,5 @@ func (s3ingested S3IngestedFile) Cleanup() PipelineOutput {
 	os.Remove(s3ingested.tempPath)
 
 	go s3ingested.UploadStatus("DELETING")
-
 	return PipelineOutput{}
 }
