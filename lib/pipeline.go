@@ -182,7 +182,7 @@ func (s3o S3Object) UploadStatus(status string) error {
 func NewS3Object(bucket, statusBucket string, s3obj s3.Object, session *session.Session, cvmfsRepo *cvmfs.Repo) S3Object {
 
 	toHash := []byte(fmt.Sprintf("%s%d", *s3obj.Key, s3obj.LastModified.Unix()))
-	hash := fmt.Sprintf("%s", sha256.Sum256(toHash))[0:10]
+	hash := fmt.Sprintf("%x", sha256.Sum256(toHash))[0:10]
 	return S3Object{
 		bucket:       bucket,
 		statusBucket: statusBucket,
