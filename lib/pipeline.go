@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cvmfs/portals/cvmfs"
+	"github.com/cvmfs/portals/log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -51,7 +52,7 @@ type IS3IngestedFile interface {
 type PipelineOutput struct{}
 
 func NewPipeline() (chan<- PipelineInput, <-chan PipelineOutput) {
-	// Each channel has a buffer of $buffer, and we have $workers running
+	// Each channel has a buffer of size $buffer, and we have $workers running
 	// at the same time, it means that in the worst case there are $buffer
 	// + $workers job on the fly.
 	buffer := 10
@@ -150,6 +151,23 @@ func (e GenericError) Cleanup() PipelineOutput {
 	return PipelineOutput{}
 }
 
+type ErrorImpossibleToCreateTempFile struct {
+	GenericError
+}
+
+type ErrorInDownloadingFile struct {
+	GenericError
+}
+
+type ErrorInIngesting struct {
+	fileTempPath string
+}
+
+func (err ErrorInIngesting) Cleanup() PipelineOutput {
+	os.Remove(err.fileTempPath)
+	return PipelineOutput{}
+}
+
 type S3Object struct {
 	bucket       string
 	statusBucket string
@@ -174,6 +192,8 @@ func (s3o S3Object) UploadStatus(status string) error {
 		Body:   body,
 	})
 	if err != nil {
+		l := log.Decorate(map[string]string{"file": key})
+		l(log.LogE(err)).Error("Error in uploading file")
 		return err
 	}
 	return nil
@@ -203,17 +223,24 @@ type S3LocalFile struct {
 
 func (s3obj S3Object) DownloadFile() IS3LocalFile {
 
-	f, _ := ioutil.TempFile("", "s3temp")
-
+	f, err := ioutil.TempFile("", "s3temp")
 	defer f.Close()
+
+	if err != nil {
+		return ErrorImpossibleToCreateTempFile{}
+	}
 
 	go s3obj.UploadStatus("DOWNLOADING")
 
 	downloader := s3manager.NewDownloader(s3obj.session)
-	downloader.Download(f, &s3.GetObjectInput{
+	_, err = downloader.Download(f, &s3.GetObjectInput{
 		Bucket: &s3obj.bucket,
 		Key:    &s3obj.key,
 	})
+
+	if err != nil {
+		return ErrorInDownloadingFile{}
+	}
 
 	return S3LocalFile{s3obj, f.Name()}
 }
@@ -228,6 +255,7 @@ func (s3local S3LocalFile) Ingest() IS3IngestedFile {
 	cvmfsPath := filepath.Join(keyPaths[:len(keyPaths)-1]...)
 
 	if cvmfsPath == "" {
+		// TODO does it works?
 		cvmfsPath = "./"
 	}
 
@@ -238,10 +266,14 @@ func (s3local S3LocalFile) Ingest() IS3IngestedFile {
 	s3local.cvmfsRepo.Lock.Lock()
 	defer s3local.cvmfsRepo.Lock.Unlock()
 
-	cvmfs.ExecCommand("cvmfs_server", "ingest",
+	err := cvmfs.ExecCommand("cvmfs_server", "ingest",
 		"-t", s3local.tempPath,
 		"-b", cvmfsPath,
 		repo).Start()
+
+	if err != nil {
+		return ErrorInIngesting{s3local.tempPath}
+	}
 
 	return S3IngestedFile{s3local.S3Object, s3local.tempPath}
 }
